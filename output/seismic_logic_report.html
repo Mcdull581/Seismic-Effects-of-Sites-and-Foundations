@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>场地和地基地震效应评价 - 逻辑链可视化报告</title>
+<style>
+  :root {
+    --primary: #1a5276;
+    --primary-light: #2980b9;
+    --accent: #e74c3c;
+    --accent-light: #ff6b6b;
+    --bg: #f0f4f8;
+    --card-bg: #ffffff;
+    --text: #2c3e50;
+    --text-light: #7f8c8d;
+    --border: #dce6f0;
+    --success: #27ae60;
+    --warning: #f39c12;
+    --danger: #e74c3c;
+    --info: #3498db;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+    --radius: 10px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white;
+    padding: 40px 30px;
+    border-radius: var(--radius);
+    margin-bottom: 30px;
+    box-shadow: var(--shadow);
+  }
+  .header h1 { font-size: 28px; margin-bottom: 8px; }
+  .header p { opacity: 0.9; font-size: 14px; }
+  .header .meta { margin-top: 15px; display: flex; gap: 20px; flex-wrap: wrap; font-size: 13px; opacity: 0.85; }
+  .header .meta span { background: rgba(255,255,255,0.15); padding: 3px 12px; border-radius: 20px; }
+
+  /* Navigation */
+  .nav {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 15px 20px;
+    margin-bottom: 25px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    position: sticky;
+    top: 10px;
+    z-index: 100;
+  }
+  .nav a {
+    text-decoration: none;
+    color: var(--primary);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+  }
+  .nav a:hover { background: var(--primary); color: white; border-color: var(--primary); }
+
+  /* Cards */
+  .card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 25px 30px;
+    margin-bottom: 25px;
+    box-shadow: var(--shadow);
+    border-left: 4px solid var(--primary-light);
+  }
+  .card h2 {
+    font-size: 20px;
+    color: var(--primary);
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card h2 .step-badge {
+    background: var(--primary);
+    color: white;
+    font-size: 12px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+  }
+  .card h3 { font-size: 16px; color: var(--primary-light); margin: 18px 0 8px; }
+  .card .desc { color: var(--text-light); font-size: 14px; margin-bottom: 15px; }
+
+  /* Flow boxes */
+  .flow { display: flex; flex-wrap: wrap; gap: 12px; margin: 15px 0; }
+  .flow-box {
+    flex: 1;
+    min-width: 180px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .flow-box.input { background: #eaf2f8; border: 1px solid #aed6f1; }
+  .flow-box.logic { background: #fef9e7; border: 1px solid #f9e79f; }
+  .flow-box.output { background: #eafaf1; border: 1px solid #a9dfbf; }
+  .flow-box .label {
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    display: block;
+  }
+  .flow-box.input .label { color: #2471a3; }
+  .flow-box.logic .label { color: #b7950b; }
+  .flow-box.output .label { color: #1e8449; }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; margin: 12px 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th {
+    background: var(--primary);
+    color: white;
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  tr:nth-child(even) { background: #f8fafc; }
+  tr:hover { background: #eaf2f8; }
+
+  /* Decision tree */
+  .tree { margin: 15px 0; }
+  .tree-node {
+    position: relative;
+    padding: 10px 16px;
+    margin: 8px 0 8px 20px;
+    border-left: 3px solid var(--primary-light);
+    background: #f8fafc;
+    border-radius: 0 8px 8px 0;
+    font-size: 13px;
+  }
+  .tree-node::before {
+    content: '';
+    position: absolute;
+    left: -3px;
+    top: 50%;
+    width: 12px;
+    height: 3px;
+    background: var(--primary-light);
+  }
+  .tree-node .condition { font-weight: 600; color: var(--primary); }
+  .tree-node .result { color: var(--success); font-weight: 500; margin-top: 4px; }
+  .tree-node .result.warn { color: var(--warning); }
+  .tree-node .result.danger { color: var(--danger); }
+
+  /* Formula */
+  .formula-box {
+    background: #fdf2e9;
+    border: 1px solid #f5cba7;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 10px 0;
+    font-family: "Courier New", monospace;
+    font-size: 14px;
+    color: #784212;
+    overflow-x: auto;
+  }
+  .formula-box .label { font-family: inherit; font-weight: 700; color: #a04000; }
+
+  /* Tags */
+  .tag {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .tag-danger { background: #fadbd8; color: #c0392b; }
+  .tag-warning { background: #fdebd0; color: #e67e22; }
+  .tag-success { background: #d5f5e3; color: #27ae60; }
+  .tag-info { background: #d6eaf8; color: #2980b9; }
+
+  /* Matrix cards */
+  .matrix-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 15px;
+    margin: 15px 0;
+  }
+  .matrix-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    background: white;
+  }
+  .matrix-card h4 { color: var(--primary); font-size: 14px; margin-bottom: 8px; }
+  .matrix-card ul { list-style: none; padding: 0; }
+  .matrix-card li {
+    padding: 4px 0;
+    font-size: 13px;
+    border-bottom: 1px dashed #eee;
+  }
+  .matrix-card li:last-child { border: none; }
+
+  /* Condition list */
+  .cond-list { list-style: none; padding: 0; }
+  .cond-list li {
+    padding: 8px 12px;
+    margin: 4px 0;
+    background: #f8fafc;
+    border-radius: 6px;
+    font-size: 13px;
+    border-left: 3px solid var(--info);
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-light);
+    font-size: 12px;
+    margin-top: 30px;
+  }
+
+  @media (max-width: 768px) {
+    .container { padding: 10px; }
+    .card { padding: 18px; }
+    .flow { flex-direction: column; }
+    .nav { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- Header -->
+<div class="header">
+  <h1>🏗️ 场地和地基地震效应评价 — 逻辑链可视化报告</h1>
+  <p>依据《建筑抗震设计规范》GB 50011-2010 及《中国地震动参数区划图》GB 18306-2015</p>
+  <div class="meta">
+    <span>📋 七大评价步骤</span>
+    <span>📊 完整数据矩阵</span>
+    <span>🔢 标准公式推导</span>
+    <span>📁 Demo区域：四川省</span>
+  </div>
+</div>
+
+<!-- Navigation -->
+<div class="nav">
+  <a href="#step1">① 设防烈度</a>
+  <a href="#step2">② 场地类别</a>
+  <a href="#step3">③ 砂土液化</a>
+  <a href="#step4">④ 软土震陷</a>
+  <a href="#step5">⑤ 滑坡崩塌</a>
+  <a href="#step6">⑥ 横向扩展</a>
+  <a href="#step7">⑦ 地段划分</a>
+  <a href="#data-tables">📊 数据表总览</a>
+  <a href="#formulas">📐 公式汇总</a>
+</div>
+
+<!-- ===== STEP 1 ===== -->
+<div class="card" id="step1">
+  <h2><span class="step-badge">步骤一</span> 场地抗震设防烈度</h2>
+  <p class="desc">确定项目所在地的抗震设防参数，是所有后续评价的基础。</p>
+
+  <div class="flow">
+    <div class="flow-box input">
+      <span class="label">📥 输入</span>
+      勘察报告2.1.1地理位置（区、县、镇或街道办）
+    </div>
+    <div class="flow-box logic">
+      <span class="label">📋 判断依据</span>
+      《建筑抗震设计规范》附录A<br>
+      《中国地震动参数区划图》附录C
+    </div>
+    <div class="flow-box output">
+      <span class="label">📤 输出</span>
+      抗震设防烈度、设计地震分组<br>
+      基本地震动峰值加速度、特征周期
+    </div>
+  </div>
+
+  <h3>判断逻辑</h3>
+  <div class="tree">
+    <div class="tree-node">
+      <div class="condition">根据区、县 → 查附录A</div>
+      <div class="result">→ 获得抗震设防烈度和设计地震分组</div>
+    </div>
+    <div class="tree-node">
+      <div class="condition">根据镇/街道办 → 查附录C</div>
+      <div class="result">→ 获得二类场地条件下基本地震动峰值加速度和反应谱特征周期</div>
+    </div>
+    <div class="tree-node">
+      <div class="condition">项目跨多区县/乡镇</div>
+      <div class="result warn">→ 分别查询各区域参数</div>
+    </div>
+  </div>
+
+  <h3>四川省主要城镇设防参数（Demo）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>城镇</th><th>设防烈度</th><th>设计基本地震加速度(g)</th><th>设计地震分组</th><th>特征周期(s)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>成都市</td><td><span class="tag tag-warning">7度</span></td><td>0.10</td><td>第三组</td><td>0.45</td></tr>
+        <tr><td>都江堰市</td><td><span class="tag tag-danger">8度</span></td><td>0.20</td><td>第二组</td><td>0.40</td></tr>
+        <tr><td>绵阳市</td><td><span class="tag tag-warning">7度</span></td><td>0.10</td><td>第二组</td><td>0.40</td></tr>
+        <tr><td>江油市</td><td><span class="tag tag-danger">8度</span></td><td>0.20</td><td>第二组</td><td>0.40</td></tr>
+        <tr><td>北川县</td><td><span class="tag tag-danger">8度</span></td><td>0.20</td><td>第二组</td><td>0.40</td></tr>
+        <tr><td>德阳市</td><td><span class="tag tag-warning">7度</span></td><td>0.10</td><td>第二组</td><td>0.40</td></tr>
+        <tr><td>雅安市</td><td><span class="tag tag-danger">8度</span></td><td>0.20</td><td>第二组</td><td>0.40</td></tr>
+        <tr><td>攀枝花市</td><td><span class="tag tag-warning">7度</span></td><td>0.15</td><td>第三组</td><td>0.45</td></tr>
+        <tr><td>西昌市</td><td><span class="tag tag-danger">9度</span></td><td>0.40</td><td>第三组</td><td>0.45</td></tr>
+        <tr><td>康定市</td><td><span class="tag tag-danger">9度</span></td><td>0.40</td><td>第三组</td><td>0.45</td></tr>
+        <tr><td>汶川县</td><td><span class="tag tag-danger">8度</span></td><td>0.20</td><td>第二组</td><td>0.40</td></tr>
+        <tr><td>泸州市</td><td><span class="tag tag-success">6度</span></td><td>0.05</td><td>第二组</td><td>0.40</td></tr>
+        <tr><td>宜宾市</td><td><span class="tag tag-warning">7度</span></td><td>0.10</td><td>第二组</td><td>0.40</td></tr>
+        <tr><td>乐山市</td><td><span class="tag tag-warning">7度</span></td><td>0.10</td><td>第二组</td><td>0.40</td></tr>
+        <tr><td>南充市</td><td><span class="tag tag-success">6度</span></td><td>0.05</td><td>第二组</td><td>0.40</td></tr>
+        <tr><td>自贡市</td><td><span class="tag tag-warning">7度</span></td><td>0.10</td><td>第二组</td><td>0.40</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== STEP 2 ===== -->
+<div class="card" id="step2">
+  <h2><span class="step-badge">步骤二</span> 场地类别划分</h2>
+  <p class="desc">根据等效剪切波速和覆盖层厚度，确定场地类别（I0~IV）。</p>
+
+  <h3>步骤2.1 — 波速测试直接划分</h3>
+  <div class="flow">
+    <div class="flow-box input"><span class="label">📥 输入</span>波速测试报告、编录信息表</div>
+    <div class="flow-box logic"><span class="label">📋 依据</span>GB 50011 第4.1.6条</div>
+    <div class="flow-box output"><span class="label">📤 输出</span>场地类别</div>
+  </div>
+
+  <h3>步骤2.2 — 计算覆盖层厚度</h3>
+  <div class="flow">
+    <div class="flow-box input"><span class="label">📥 输入</span>编录信息表、各土层剪切波速</div>
+    <div class="flow-box logic"><span class="label">📋 依据</span>GB 50011 第4.1.3条</div>
+    <div class="flow-box output"><span class="label">📤 输出</span>各钻孔覆盖层厚度</div>
+  </div>
+
+  <h3>土的类型与剪切波速（表4.1.3）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>土的类型</th><th>岩土名称和性状</th><th>剪切波速范围(m/s)</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag tag-info">岩石</span></td><td>坚硬、较硬且完整的岩石</td><td><strong>vs > 800</strong></td></tr>
+        <tr><td><span class="tag tag-info">坚硬土/软质岩</span></td><td>中风化砂岩、密实卵石、密实碎石土</td><td><strong>800 ≥ vs > 500</strong></td></tr>
+        <tr><td><span class="tag tag-info">中硬土</span></td><td>强风化砂岩、中密~稍密卵石、硬塑粘土</td><td><strong>500 ≥ vs > 250</strong></td></tr>
+        <tr><td><span class="tag tag-warning">中软土</span></td><td>稍密砂、可塑~软塑粘土、粉土</td><td><strong>250 ≥ vs > 150</strong></td></tr>
+        <tr><td><span class="tag tag-danger">软弱土</span></td><td>淤泥、淤泥质土、素填土、杂填土</td><td><strong>vs ≤ 150</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>覆盖层底界判定条件</h3>
+  <ul class="cond-list">
+    <li>条件1：剪切波速 <strong>Vs > 500m/s</strong> 且其下卧各层波速均 ≥ 500m/s</li>
+    <li>条件2：地面5m以下剪切波速大于其上部各土层波速 <strong>2.5倍</strong>，且该层及下卧层波速均 ≥ <strong>400m/s</strong></li>
+  </ul>
+
+  <h3>步骤2.3 — 等效剪切波速计算</h3>
+  <div class="formula-box">
+    <span class="label">公式 4.1.5-1：</span> v<sub>se</sub> = d<sub>0</sub> / t<br>
+    <span class="label">公式 4.1.5-2：</span> t = Σ(d<sub>i</sub> / v<sub>si</sub>), i = 1 to n<br><br>
+    d<sub>0</sub> = min(覆盖层厚度, 20m)
+  </div>
+
+  <h3>步骤2.4 — 场地类别判定（表4.1.6）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>等效剪切波速(m/s)</th>
+          <th>I₀</th><th>I₁</th><th>II</th><th>III</th><th>IV</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>vs > 800</strong></td><td style="background:#d5f5e3">0</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+        <tr><td><strong>800 ≥ vs > 500</strong></td><td>—</td><td style="background:#d5f5e3">0</td><td>—</td><td>—</td><td>—</td></tr>
+        <tr><td><strong>500 ≥ vse > 250</strong></td><td>—</td><td style="background:#d6eaf8">&lt;5m</td><td style="background:#d5f5e3">≥5m</td><td>—</td><td>—</td></tr>
+        <tr><td><strong>250 ≥ vse > 150</strong></td><td>—</td><td style="background:#d6eaf8">&lt;3m</td><td style="background:#d5f5e3">3~50m</td><td style="background:#fdebd0">&gt;50m</td><td>—</td></tr>
+        <tr><td><strong>vse ≤ 150</strong></td><td>—</td><td style="background:#d6eaf8">&lt;3m</td><td style="background:#d5f5e3">3~15m</td><td style="background:#fdebd0">15~80m</td><td style="background:#fadbd8">&gt;80m</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:12px;color:var(--text-light);margin-top:5px;">注：表中数值为覆盖层厚度(m)。绿色=场地较好，黄色=中等，红色=场地较差。</p>
+</div>
+
+<!-- ===== STEP 3 ===== -->
+<div class="card" id="step3" style="border-left-color: #e74c3c;">
+  <h2><span class="step-badge" style="background:#e74c3c">步骤三</span> 砂土液化评价（10步流程）</h2>
+  <p class="desc">从初判到液化指数计算，逐步判别砂土液化可能性及等级。</p>
+
+  <!-- 3.1 是否判别 -->
+  <h3>步骤1 — 是否进行液化判别</h3>
+  <div class="tree">
+    <div class="tree-node">
+      <div class="condition">条件1：场地内存在砂土和粉土</div>
+      <div class="condition">条件2：抗震设防烈度 > 6度</div>
+      <div class="result">同时满足 → 需进行液化判别</div>
+      <div class="result warn">不同时满足 → 无需判别，结束</div>
+    </div>
+  </div>
+
+  <!-- 3.2 初判 -->
+  <h3>步骤2~4 — 液化初判（三级筛选）</h3>
+  <div class="matrix-grid">
+    <div class="matrix-card">
+      <h4>🔍 初判一（第4.3.3条第1款）</h4>
+      <ul>
+        <li>地质年代为 Q₃ 及以前</li>
+        <li>设防烈度为 7度或 8度</li>
+        <li><span class="tag tag-success">同时满足 → 不考虑液化</span></li>
+      </ul>
+    </div>
+    <div class="matrix-card">
+      <h4>🔍 初判二（第4.3.3条第2款）</h4>
+      <ul>
+        <li>粉土黏粒含量百分率：</li>
+        <li>7度 → ≥ 10%</li>
+        <li>8度 → ≥ 13%</li>
+        <li>9度 → ≥ 16%</li>
+        <li><span class="tag tag-success">满足 → 不液化土</span></li>
+      </ul>
+    </div>
+    <div class="matrix-card">
+      <h4>🔍 初判三（第4.3.3条第3款）</h4>
+      <ul>
+        <li>d<sub>u</sub> > d<sub>0</sub> + d<sub>b</sub> - 2</li>
+        <li>d<sub>w</sub> > d<sub>0</sub> + d<sub>b</sub> - 3</li>
+        <li>d<sub>u</sub> + d<sub>w</sub> > 1.5d<sub>0</sub> + 2d<sub>b</sub> - 4.5</li>
+        <li><span class="tag tag-success">满足任一 → 不考虑液化</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 3.3 液化土特征深度 -->
+  <h3>液化土特征深度 d₀（表4.3.3）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>饱和土类别</th><th>7度</th><th>8度</th><th>9度</th></tr></thead>
+      <tbody>
+        <tr><td><strong>粉土</strong></td><td>6m</td><td>7m</td><td>8m</td></tr>
+        <tr><td><strong>砂土</strong></td><td>7m</td><td>8m</td><td>9m</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 3.4 判别深度 -->
+  <h3>步骤5 — 液化判别深度</h3>
+  <div class="tree">
+    <div class="tree-node">
+      <div class="condition">建筑类型：单层厂房/砌体房屋/≤8层且≤24m</div>
+      <div class="result">→ 判别深度为 15m</div>
+    </div>
+    <div class="tree-node">
+      <div class="condition">其他建筑</div>
+      <div class="result">→ 判别深度为 20m</div>
+    </div>
+  </div>
+
+  <!-- 3.5 液化复判 -->
+  <h3>步骤6~7 — 液化复判计算</h3>
+  <div class="formula-box">
+    <span class="label">液化判别公式（4.3.4）：</span><br>
+    N<sub>cr</sub> = N<sub>0</sub> × β × [ln(0.6×d<sub>s</sub> + 1.5) - 0.1×d<sub>w</sub>] × √(3/ρ<sub>c</sub>)
+  </div>
+
+  <h3>标准贯入锤击数基准值 N₀（表4.3.4）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>设计基本地震加速度(g)</th><th>0.10</th><th>0.15</th><th>0.20</th><th>0.30</th><th>0.40</th></tr></thead>
+      <tbody>
+        <tr><td><strong>N₀</strong></td><td>7</td><td>10</td><td>12</td><td>16</td><td>19</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>调整系数 β</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>设计地震分组</th><th>第一组</th><th>第二组</th><th>第三组</th></tr></thead>
+      <tbody>
+        <tr><td><strong>β</strong></td><td>0.80</td><td>0.95</td><td>1.05</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>步骤7 — 液化复判结论</h3>
+  <div class="tree">
+    <div class="tree-node">
+      <div class="condition">N ≤ N<sub>cr</sub></div>
+      <div class="result danger">→ 判断为液化土，进入步骤8</div>
+    </div>
+    <div class="tree-node">
+      <div class="condition">N > N<sub>cr</sub></div>
+      <div class="result">→ 判断为不液化土，结束</div>
+    </div>
+  </div>
+
+  <!-- 3.6 液化指数 -->
+  <h3>步骤8 — 液化指数计算</h3>
+  <div class="formula-box">
+    <span class="label">液化指数公式（4.3.5）：</span><br>
+    I<sub>lE</sub> = Σ [1 - N<sub>i</sub>/N<sub>cri</sub>] × d<sub>i</sub> × W<sub>i</sub>，i = 1 to n<br><br>
+    <span class="label">权函数：</span><br>
+    W<sub>i</sub> = 10，当 0 &lt; d<sub>s</sub> ≤ 5<br>
+    W<sub>i</sub> = (2/3)(20 - d<sub>s</sub>)，当 5 &lt; d<sub>s</sub> ≤ 20
+  </div>
+
+  <!-- 3.7 液化等级 -->
+  <h3>步骤9 — 液化等级判定（表4.3.5）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>液化等级</th><th>液化指数 I<sub>lE</sub></th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag tag-success">轻微</span></td><td>0 &lt; I<sub>lE</sub> ≤ 6</td><td>液化影响较小</td></tr>
+        <tr><td><span class="tag tag-warning">中等</span></td><td>6 &lt; I<sub>lE</sub> ≤ 18</td><td>液化影响中等</td></tr>
+        <tr><td><span class="tag tag-danger">严重</span></td><td>I<sub>lE</sub> &gt; 18</td><td>液化影响严重</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 3.8 处理措施 -->
+  <h3>步骤10 — 抗液化处理措施（表4.3.6）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>设防类别</th><th>轻微液化</th><th>中等液化</th><th>严重液化</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="tag tag-danger">甲类</span></td>
+          <td>全部消除液化沉陷</td>
+          <td>全部消除液化沉陷</td>
+          <td>全部消除液化沉陷</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-warning">乙类</span></td>
+          <td>部分消除液化沉陷，或对基础和上部结构进行处理</td>
+          <td>全部消除液化沉陷，或部分消除且对基础和上部结构进行处理</td>
+          <td>全部消除液化沉陷</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-info">丙类</span></td>
+          <td>可不采取措施</td>
+          <td>对基础和上部结构进行处理，或采用更经济的措施</td>
+          <td>全部消除液化沉陷，或部分消除且对基础和上部结构进行处理</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-success">丁类</span></td>
+          <td>可不采取措施</td>
+          <td>可不采取措施</td>
+          <td>对基础和上部结构进行处理，或采用其他经济的措施</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== STEP 4 ===== -->
+<div class="card" id="step4" style="border-left-color: #f39c12;">
+  <h2><span class="step-badge" style="background:#f39c12">步骤四</span> 软弱土震陷评价</h2>
+  <p class="desc">依据《软土地区岩土工程勘察规程》CECS 55:2017 第6.3.4条。</p>
+
+  <h3>步骤1 — 是否进行震陷评价</h3>
+  <div class="tree">
+    <div class="tree-node">
+      <div class="condition">条件1：抗震设防烈度 ≥ 7度</div>
+      <div class="condition">条件2：存在软弱土（淤泥、淤泥质土、冲填土、杂填土及其他高压缩性土层）</div>
+      <div class="result">均满足 → 进行震陷评价</div>
+    </div>
+  </div>
+
+  <h3>步骤2 — 初判</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>设防烈度</th><th>等效剪切波速阈值(m/s)</th><th>承载力特征值阈值(kPa)</th><th>判定</th></tr></thead>
+      <tbody>
+        <tr><td>7度(0.10g)</td><td>90</td><td>80</td><td rowspan="5">V<sub>se</sub> 或 f<sub>ak</sub> 大于表中数值时<br><span class="tag tag-success">可不考虑震陷影响</span></td></tr>
+        <tr><td>7度(0.15g)</td><td>90</td><td>80</td></tr>
+        <tr><td>8度(0.20g)</td><td>140</td><td>100</td></tr>
+        <tr><td>8度(0.30g)</td><td>140</td><td>100</td></tr>
+        <tr><td>9度(0.40g)</td><td>200</td><td>120</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>饱和粉质粘土震陷判别（8度0.30g和9度）</h3>
+  <div class="formula-box">
+    当塑性指数 I<sub>p</sub> &lt; 15 时：<br>
+    W<sub>s</sub> ≥ 0.9W<sub>L</sub><br>
+    I<sub>L</sub> = (W<sub>s</sub> - W<sub>p</sub>) / (W<sub>L</sub> - W<sub>p</sub>) ≥ 0.75<br>
+    <span class="label">→ 满足则判为震陷性软土</span>
+  </div>
+
+  <h3>步骤3 — 震陷估算值</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>设防烈度</th><th>V<sub>se</sub> = 90~140 m/s</th><th>V<sub>se</sub> = 140~200 m/s</th></tr></thead>
+      <tbody>
+        <tr><td>7度(0.10g)</td><td>30~50mm</td><td>不考虑</td></tr>
+        <tr><td>8度(0.20g)</td><td>50~150mm</td><td>30~50mm</td></tr>
+        <tr><td>8度(0.30g)</td><td>100~200mm</td><td>50~100mm</td></tr>
+        <tr><td>9度(0.40g)</td><td>200~400mm</td><td>100~200mm</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>步骤4 — 危害性评价</h3>
+  <div class="tree">
+    <div class="tree-node">
+      <div class="condition">震陷量 &gt; 50mm 或超过地基变形允许值</div>
+      <div class="result danger">→ 需采取措施：桩基穿越软土层、深层搅拌法、高压旋喷法、换填垫层、复合地基</div>
+    </div>
+    <div class="tree-node">
+      <div class="condition">震陷量 ≤ 50mm 且未超过地基变形允许值</div>
+      <div class="result">→ 可不采取措施</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== STEP 5 ===== -->
+<div class="card" id="step5">
+  <h2><span class="step-badge">步骤五</span> 地震滑坡/崩塌评价</h2>
+  <p class="desc">评估场地是否存在地震引发的滑坡或崩塌风险。</p>
+
+  <div class="flow">
+    <div class="flow-box input"><span class="label">📥 输入</span>勘察报告2.6节 不良地质作用</div>
+    <div class="flow-box logic"><span class="label">📋 依据</span>《建筑抗震设计规范》</div>
+    <div class="flow-box output"><span class="label">📤 输出</span>是否存在滑坡/崩塌风险</div>
+  </div>
+
+  <div class="tree">
+    <div class="tree-node">
+      <div class="condition">存在滑坡/崩塌</div>
+      <div class="result danger">→ 建议开展专项勘察或提出严禁建设/避让要求</div>
+    </div>
+    <div class="tree-node">
+      <div class="condition">不存在滑坡/崩塌</div>
+      <div class="result">→ "地震作用下不会产生滑坡、崩塌等不良地质作用"</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== STEP 6 ===== -->
+<div class="card" id="step6" style="border-left-color: #8e44ad;">
+  <h2><span class="step-badge" style="background:#8e44ad">步骤六</span> 场地横向扩展评价</h2>
+  <p class="desc">评估液化土层在地震作用下的侧向流动风险。</p>
+
+  <h3>步骤1 — 是否存在液化土</h3>
+  <div class="tree">
+    <div class="tree-node">
+      <div class="condition">液化评价结果存在液化土</div>
+      <div class="result warn">→ 进入步骤2</div>
+    </div>
+    <div class="tree-node">
+      <div class="condition">不存在液化土</div>
+      <div class="result">→ 不考虑横向扩展作用</div>
+    </div>
+  </div>
+
+  <h3>步骤2 — 临空条件判定</h3>
+  <ul class="cond-list">
+    <li>位于故河道</li>
+    <li>临近河岸、湖泊、海岸</li>
+    <li>边坡坡脚、坡顶和明显的地面高差</li>
+    <li>人工临空面（如深基坑）</li>
+  </ul>
+
+  <h3>处理措施（满足临空条件时）</h3>
+  <div class="matrix-grid">
+    <div class="matrix-card">
+      <h4>🔧 地基处理措施</h4>
+      <ul>
+        <li>振冲碎石桩</li>
+        <li>CFG桩</li>
+        <li>高压旋喷桩</li>
+        <li>大直径素混凝土桩</li>
+        <li>强夯</li>
+        <li>挤密砂桩</li>
+        <li>地下连续墙或板桩墙</li>
+      </ul>
+    </div>
+    <div class="matrix-card">
+      <h4>🏛️ 结构措施</h4>
+      <ul>
+        <li>抗滑动验算</li>
+        <li>筏板基础、地梁体系</li>
+        <li>桩基水平承载力验算</li>
+        <li>加强基础整体性</li>
+      </ul>
+    </div>
+    <div class="matrix-card">
+      <h4>📡 监测方案</h4>
+      <ul>
+        <li>设置水平位移监测点</li>
+        <li>开展长期监测</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ===== STEP 7 ===== -->
+<div class="card" id="step7" style="border-left-color: #27ae60;">
+  <h2><span class="step-badge" style="background:#27ae60">步骤七</span> 抗震地段划分</h2>
+  <p class="desc">综合评估场地条件，划分为有利、不利或危险地段。</p>
+
+  <h3>判定流程</h3>
+  <div class="tree">
+    <div class="tree-node">
+      <div class="condition">步骤1：是否存在滑坡、崩塌、地陷、地裂、泥石流？</div>
+      <div class="result danger">存在 → 危险地段，结束</div>
+      <div class="result">不存在 → 进入步骤2</div>
+    </div>
+    <div class="tree-node">
+      <div class="condition">步骤2：是否存在发震断裂？</div>
+      <div class="result">不存在 → 进入步骤4</div>
+      <div class="result warn">存在 → 进入步骤3</div>
+    </div>
+    <div class="tree-node">
+      <div class="condition">步骤3：发震断裂评估</div>
+      <div class="result">满足任一：①烈度&lt;8度 ②非全新世活动断裂 ③8度/9度时覆盖层&gt;60m/90m → 不考虑断裂影响</div>
+      <div class="result danger">均不满足 → 危险地段</div>
+    </div>
+    <div class="tree-node">
+      <div class="condition">步骤4：是否存在不利条件？</div>
+      <div class="result warn">满足任一不利条件 → 不利地段</div>
+      <div class="result">均不满足 → 进入步骤5</div>
+    </div>
+    <div class="tree-node">
+      <div class="condition">步骤5：是否为有利条件？</div>
+      <div class="result">稳定基岩/坚硬土或开阔平坦中硬土 → 有利地段</div>
+      <div class="result warn">均不满足 → 一般地段</div>
+    </div>
+  </div>
+
+  <h3>不利地段判定条件矩阵</h3>
+  <div class="matrix-grid">
+    <div class="matrix-card">
+      <h4>① 软弱土与液化土</h4>
+      <ul><li>持力层范围存在淤泥、淤泥质土、松散砂或可液化土</li></ul>
+    </div>
+    <div class="matrix-card">
+      <h4>② 条状突出山嘴</h4>
+      <ul><li>条状突出的山嘴地形</li></ul>
+    </div>
+    <div class="matrix-card">
+      <h4>③ 高耸孤立山丘</h4>
+      <ul><li>鞭鞘效应明显，烈度增高趋势</li></ul>
+    </div>
+    <div class="matrix-card">
+      <h4>④ 陡坡与陡坎</h4>
+      <ul><li>非岩石和强风化岩石的陡坡、陡坎</li></ul>
+    </div>
+    <div class="matrix-card">
+      <h4>⑤ 河岸与边坡边缘</h4>
+      <ul><li>地震时存在失稳滑移风险</li></ul>
+    </div>
+    <div class="matrix-card">
+      <h4>⑥ 土层明显不均匀</h4>
+      <ul><li>含故河道、断层破碎带、暗埋塘浜沟谷、半填半挖地基</li></ul>
+    </div>
+    <div class="matrix-card">
+      <h4>⑦ 高含水量可塑黄土</h4>
+      <ul><li>地震作用下会产生震陷</li></ul>
+    </div>
+    <div class="matrix-card">
+      <h4>⑧ 地表结构性裂缝</h4>
+      <ul><li>场地内地表存在结构性裂缝</li></ul>
+    </div>
+  </div>
+</div>
+
+<!-- ===== DATA TABLES OVERVIEW ===== -->
+<div class="card" id="data-tables">
+  <h2>📊 数据表总览</h2>
+  <p class="desc">本报告已补全的核心数据表一览，均来源于国家标准原文。</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>序号</th><th>数据表名称</th><th>来源标准</th><th>条款</th><th>数据量</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>附录A 抗震设防烈度表</td><td>GB 50011-2010</td><td>附录A</td><td>41条（四川Demo）</td><td>全国数据量极大，以四川省为Demo</td></tr>
+        <tr><td>2</td><td>附录C 地震动参数区划</td><td>GB 18306-2015</td><td>附录C</td><td>17条（四川Demo）</td><td>需配合区划图查询系统使用</td></tr>
+        <tr><td>3</td><td>表4.1.3 土的类型与波速</td><td>GB 50011-2010</td><td>4.1.3</td><td>5类</td><td>✅ 完整</td></tr>
+        <tr><td>4</td><td>表4.1.6 场地类别划分</td><td>GB 50011-2010</td><td>4.1.6</td><td>5×5矩阵</td><td>✅ 完整</td></tr>
+        <tr><td>5</td><td>表4.3.3 液化土特征深度</td><td>GB 50011-2010</td><td>4.3.3</td><td>2×3矩阵</td><td>✅ 完整</td></tr>
+        <tr><td>6</td><td>表4.3.4 基准值N₀</td><td>GB 50011-2010</td><td>4.3.4</td><td>5组</td><td>✅ 完整</td></tr>
+        <tr><td>7</td><td>表4.3.4 调整系数β</td><td>GB 50011-2010</td><td>4.3.4</td><td>3组</td><td>✅ 完整</td></tr>
+        <tr><td>8</td><td>表4.3.5 液化等级</td><td>GB 50011-2010</td><td>4.3.5</td><td>3级</td><td>✅ 完整</td></tr>
+        <tr><td>9</td><td>表4.3.6 抗液化措施</td><td>GB 50011-2010</td><td>4.3.6</td><td>4×3矩阵</td><td>✅ 完整（原文为图片，已转为文字）</td></tr>
+        <tr><td>10</td><td>软土震陷初判阈值</td><td>CECS 55:2017</td><td>6.3.4</td><td>5组</td><td>✅ 完整（原文为图片，已转为表格）</td></tr>
+        <tr><td>11</td><td>震陷估算值表</td><td>CECS 55:2017</td><td>6.3.4</td><td>4×2矩阵</td><td>✅ 完整（原文为图片，已转为表格）</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== FORMULAS ===== -->
+<div class="card" id="formulas">
+  <h2>📐 核心公式汇总</h2>
+
+  <div class="formula-box">
+    <span class="label">① 等效剪切波速（4.1.5）</span><br>
+    v<sub>se</sub> = d<sub>0</sub> / t<br>
+    t = Σ(d<sub>i</sub> / v<sub>si</sub>)，i = 1, 2, ..., n<br>
+    d<sub>0</sub> = min(覆盖层厚度, 20m)
+  </div>
+
+  <div class="formula-box">
+    <span class="label">② 液化判别临界值（4.3.4）</span><br>
+    N<sub>cr</sub> = N<sub>0</sub> × β × [ln(0.6×d<sub>s</sub> + 1.5) - 0.1×d<sub>w</sub>] × √(3/ρ<sub>c</sub>)
+  </div>
+
+  <div class="formula-box">
+    <span class="label">③ 液化指数（4.3.5）</span><br>
+    I<sub>lE</sub> = Σ [1 - N<sub>i</sub>/N<sub>cri</sub>] × d<sub>i</sub> × W<sub>i</sub>，i = 1, 2, ..., n
+  </div>
+
+  <div class="formula-box">
+    <span class="label">④ 层位影响权函数</span><br>
+    W<sub>i</sub> = 10，当 0 &lt; d<sub>s</sub> ≤ 5<br>
+    W<sub>i</sub> = (2/3)(20 - d<sub>s</sub>)，当 5 &lt; d<sub>s</sub> ≤ 20
+  </div>
+
+  <div class="formula-box">
+    <span class="label">⑤ 液化初判条件（4.3.3）</span><br>
+    d<sub>u</sub> &gt; d<sub>0</sub> + d<sub>b</sub> - 2<br>
+    d<sub>w</sub> &gt; d<sub>0</sub> + d<sub>b</sub> - 3<br>
+    d<sub>u</sub> + d<sub>w</sub> &gt; 1.5×d<sub>0</sub> + 2×d<sub>b</sub> - 4.5
+  </div>
+
+  <div class="formula-box">
+    <span class="label">⑥ 饱和粉质粘土震陷判别</span><br>
+    W<sub>s</sub> ≥ 0.9W<sub>L</sub><br>
+    I<sub>L</sub> = (W<sub>s</sub> - W<sub>p</sub>) / (W<sub>L</sub> - W<sub>p</sub>) ≥ 0.75
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <p>📋 数据来源：GB 50011-2010《建筑抗震设计规范》、GB 18306-2015《中国地震动参数区划图》、CECS 55:2017《软土地区岩土工程勘察规程》</p>
+  <p>⚠️ 附录A（设防烈度）和附录C（地震动参数）数据量庞大（覆盖全国区县/乡镇），本报告以四川省为Demo展示。完整数据请查阅规范原文或国家地震动参数区划图查询系统。</p>
+  <p>生成日期：2026-06-04</p>
+</div>
+
+</div>
+</body>
+</html>
